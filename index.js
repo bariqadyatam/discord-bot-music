@@ -1,7 +1,15 @@
-require('dotenv').config();
 const { Client, GatewayIntentBits } = require('discord.js');
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, getVoiceConnection } = require('@discordjs/voice');
+const {
+  joinVoiceChannel,
+  createAudioPlayer,
+  createAudioResource,
+  AudioPlayerStatus,
+  getVoiceConnection
+} = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
+
+// Langsung masukkan token bot di sini
+const DISCORD_TOKEN = 'MTMyODAzNjQ3OTcxMjEwMDQ0NA.GFBiws.YifVi5Rs6IWgTb75sAAdQ5IlL6Ltyc-o6Msi10';
 
 const client = new Client({
   intents: [
@@ -12,25 +20,26 @@ const client = new Client({
   ]
 });
 
-client.on('ready', () => {
-  console.log(`Logged in as ${client.user.tag}`);
+client.once('ready', () => {
+  console.log(`Bot siap sebagai ${client.user.tag}`);
 });
 
-client.on('messageCreate', async message => {
-  if (!message.guild || message.author.bot) return;
+client.on('messageCreate', async (message) => {
+  if (message.author.bot || !message.guild) return;
 
-  const args = message.content.split(' ');
+  const args = message.content.trim().split(' ');
   const command = args.shift().toLowerCase();
 
   if (command === '!play') {
     const url = args[0];
-
     if (!url || !ytdl.validateURL(url)) {
-      return message.reply('Berikan link YouTube yang valid. Contoh: `!play https://youtube.com/watch?v=xxxxxx`');
+      return message.reply('Masukkan link YouTube yang valid!\nContoh: `!play https://www.youtube.com/watch?v=xxxx`');
     }
 
     const voiceChannel = message.member.voice.channel;
-    if (!voiceChannel) return message.reply('Masuk ke voice channel dulu ya.');
+    if (!voiceChannel) {
+      return message.reply('Kamu harus join voice channel dulu.');
+    }
 
     const connection = joinVoiceChannel({
       channelId: voiceChannel.id,
@@ -45,22 +54,28 @@ client.on('messageCreate', async message => {
     player.play(resource);
     connection.subscribe(player);
 
+    message.reply(`🎵 Memutar musik dari: ${url}`);
+
     player.on(AudioPlayerStatus.Idle, () => {
       connection.destroy();
     });
 
-    message.reply(`Sedang memutar: ${url}`);
+    player.on('error', error => {
+      console.error(`Error saat memutar audio: ${error.message}`);
+      connection.destroy();
+      message.reply('❌ Gagal memutar audio.');
+    });
   }
 
   if (command === '!stop') {
     const connection = getVoiceConnection(message.guild.id);
     if (connection) {
       connection.destroy();
-      message.reply('Musik dihentikan dan bot keluar dari voice channel.');
+      message.reply('🛑 Musik dihentikan dan bot keluar dari voice channel.');
     } else {
-      message.reply('Bot tidak sedang di voice channel.');
+      message.reply('❗ Bot tidak sedang berada di voice channel.');
     }
   }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(DISCORD_TOKEN);
